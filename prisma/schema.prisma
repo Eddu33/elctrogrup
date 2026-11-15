@@ -1,0 +1,109 @@
+// Prisma schema for Electro Group Presupuestos
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id           String        @id @default(cuid())
+  name         String
+  company      String?
+  cuitDni      String?
+  phone        String?
+  email        String?
+  address      String?
+  city         String?
+  notes        String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  presupuestos Presupuesto[]
+}
+
+model Material {
+  id               String                    @id @default(cuid())
+  code             String?                   // SKU / Código de referencia
+  name             String
+  category         String                    // Cables, Protecciones, Cañerías, etc.
+  unit             String                    @default("unidad") // metro, unidad, rollo, pack
+  priceUSD         Float                     @default(0)
+  priceARS         Float                     @default(0)
+  brand            String?
+  description      String?
+  createdAt        DateTime                  @default(now())
+  updatedAt        DateTime                  @updatedAt
+  presupuestoItems PresupuestoMaterialItem[]
+}
+
+model Presupuesto {
+  id                String                    @id @default(cuid())
+  number            Int                       @default(autoincrement())
+  title             String                    // Ej: "chequeo de seguridad eléctrica"
+  obra              String                    @default("Sin obra") // "Sin obra", "Obra Barrio Norte", etc.
+  status            String                    @default("Borrador") // "Borrador", "Enviado", "Aprobado", "Rechazado"
+  date              DateTime                  @default(now())
+  validityDays      Int                       @default(15)
+  dollarRate        Float                     @default(1250) // Dólar fijado para este presupuesto
+  subtotalMaterials Float                     @default(0)
+  subtotalLabor     Float                     @default(0)
+  discountPercent   Float                     @default(0)
+  taxPercent        Float                     @default(0)
+  total             Float                     @default(0)
+  notes             String?
+  terms             String?
+  clientId          String?
+  client            Client?                   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientName        String?                   // Respaldo de nombre si no hay ID
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  materials         PresupuestoMaterialItem[]
+  labors            PresupuestoLaborItem[]
+}
+
+model PresupuestoMaterialItem {
+  id            String       @id @default(cuid())
+  presupuestoId String
+  presupuesto   Presupuesto  @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  materialId    String?
+  material      Material?    @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  name          String
+  category      String?
+  unit          String       @default("unidad")
+  quantity      Float        @default(1)
+  unitPriceUSD  Float        @default(0)
+  unitPriceARS  Float        @default(0)
+  subtotalARS   Float        @default(0)
+  notes         String?
+}
+
+model PresupuestoLaborItem {
+  id            String      @id @default(cuid())
+  presupuestoId String
+  presupuesto   Presupuesto @relation(fields: [presupuestoId], references: [id], onDelete: Cascade)
+  description   String      // "Instalación tablero principal", "Cableado de bocas", etc.
+  quantity      Float       @default(1)
+  unit          String      @default("global") // global, bocas, horas, metros
+  unitPrice     Float       @default(0)
+  subtotal      Float       @default(0)
+}
+
+model CompanySettings {
+  id             String   @id @default("default")
+  companyName    String   @default("ELECTRO GROUP")
+  ownerName      String   @default("Pedro Espinosa Molina")
+  cuitDni        String   @default("20-30405060-7")
+  phone          String   @default("3512477860")
+  email          String?  @default("contacto@electrogroup.com.ar")
+  address        String?  @default("Córdoba, Argentina")
+  brandColor     String   @default("#EAB308")
+  logoUrl        String?
+  dollarRate     Float    @default(1250) // Dólar de referencia actual
+  dollarSource   String?  @default("blue")
+  pdfHeaderNotes String?
+  pdfFooterNotes String?  @default("Presupuesto válido por 15 días. Precios sujetos a variación del dólar.")
+  updatedAt      DateTime @updatedAt
+}
